@@ -1,8 +1,9 @@
 streamlit
 google-generativeai
 python-dotenv
-langchain   
+langchain
+langchain_community
+langchain_google_genai
 PyPDF2
 faiss-cpu
-langchain_google_genai
-openai-whisper
+requests
