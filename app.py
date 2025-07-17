@@ -9,11 +9,18 @@ from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
 import requests
+from keybert import KeyBERT
 from urllib.parse import quote
 load_dotenv()
 CX = os.getenv("GOOGLE_ENGINE_ID")
 
 API_KEY =  os.getenv("GOOGLE_API_KEY")
+
+def extract_keywords(text, num_keywords=5):
+    kw_model = KeyBERT()
+    keywords = kw_model.extract_keywords(text, keyphrase_ngram_range=(1, 2), stop_words='english', top_n=num_keywords)
+    # Return only the keyword strings
+    return [kw[0] for kw in keywords]
 
 def search_links(query, site):
     """Searches Google Custom Search for the given site and returns top URLs."""
@@ -107,57 +114,64 @@ def user_input(user_question):
     )
     
     st.write("Reply: ", response["output_text"]) 
-    yt_links, wiki_links = get_related_links(user_question)
     
-    # Show up to 4 YouTube videos with styled title, thumbnail, and link
-    if yt_links:
-        st.markdown('<span style="font-size:28px; color:#FFFFFF;">Related YouTube videos:</span>', unsafe_allow_html=True)
-        # Group links into pairs
-        for i in range(0, min(4, len(yt_links)), 2):
-            cols = st.columns(2)
-            for j, col in enumerate(cols):
-                if i + j < len(yt_links[:4]):
-                    link = yt_links[i + j]
-                    if "watch?v=" in link:
-                        video_id = link.split("watch?v=")[-1].split("&")[0]
-                        thumbnail_url = f"https://img.youtube.com/vi/{video_id}/0.jpg"
-                        try:
-                            oembed_url = f"https://www.youtube.com/oembed?url={link}&format=json"
-                            video_info = requests.get(oembed_url).json()
-                            title = video_info.get("title", "YouTube Video")
-                        except Exception:
-                            title = "YouTube Video"
-                        col.image(thumbnail_url, width=200)
-                        col.markdown(
-                            f'<a href="{link}" target="_blank">'
-                            f'<span style="font-family:Arial, sans-serif; font-size:20px; color:#FFFFFF;">{title}</span>'
-                            '</a>',
-                            unsafe_allow_html=True
-                        )
-                    else:
-                        col.markdown(
-                            f'<a href="{link}" target="_blank">'
-                            f'<span style="font-family:Arial, sans-serif; font-size:20px; color:#FFFFFF;">YouTube Video</span>'
-                            '</a>',
-                            unsafe_allow_html=True
-                        )
+    keywords = extract_keywords(response["output_text"])
+    print (keywords)
+    # Limit to top 3 keywords
+    top_keywords = keywords[:3]
+    keyword_links = []
+    for kw in top_keywords:
+        yt_links = search_links(kw, "youtube.com")[:2]
+        wiki_links = search_links(kw, "wikipedia.org")[:2]
+        keyword_links.append((kw, yt_links, wiki_links))
 
-    # Show up to 4 Wikipedia articles with styled title and link
-    if wiki_links:
-        st.markdown('<span style="font-size:28px; color:#FFFFFF;">Related Wikipedia articles:</span>', unsafe_allow_html=True)
-        for link in wiki_links[:4]:
-            try:
-                title = link.split("/wiki/")[-1].replace("_", " ")
-            except Exception:
-                title = "Wikipedia Article"
-            st.markdown(
-                f'<a href="{link}" target="_blank">'
-                f'<span style="font-family:Arial, sans-serif; font-size:20px; color:#FFFFFF;">{title}</span>'
-                '</a>',
-                unsafe_allow_html=True
-            )
-    
-
+    # Display related links for each keyword
+    for kw, yt_links, wiki_links in keyword_links:
+        st.markdown(f'<span style="font-size:24px; color:#FFFFFF;">Related links for keyword: <b>{kw}</b></span>', unsafe_allow_html=True)
+        
+        # YouTube links
+        if yt_links:
+            st.markdown('<span style="font-size:20px; color:#FFFFFF;">YouTube videos:</span>', unsafe_allow_html=True)
+            cols = st.columns(len(yt_links))
+            for i, link in enumerate(yt_links):
+                if "watch?v=" in link:
+                    video_id = link.split("watch?v=")[-1].split("&")[0]
+                    thumbnail_url = f"https://img.youtube.com/vi/{video_id}/0.jpg"
+                    try:
+                        oembed_url = f"https://www.youtube.com/oembed?url={link}&format=json"
+                        video_info = requests.get(oembed_url).json()
+                        title = video_info.get("title", "YouTube Video")
+                    except Exception:
+                        title = "YouTube Video"
+                    cols[i].image(thumbnail_url, width=200)
+                    cols[i].markdown(
+                        f'<a href="{link}" target="_blank">'
+                        f'<span style="font-family:Arial, sans-serif; font-size:18px; color:#FFFFFF;">{title}</span>'
+                        '</a>',
+                        unsafe_allow_html=True
+                    )
+                else:
+                    cols[i].markdown(
+                        f'<a href="{link}" target="_blank">'
+                        f'<span style="font-family:Arial, sans-serif; font-size:18px; color:#FFFFFF;">YouTube Video</span>'
+                        '</a>',
+                        unsafe_allow_html=True
+                    )
+        
+        # Wikipedia links
+        if wiki_links:
+            st.markdown('<span style="font-size:20px; color:#FFFFFF;">Wikipedia articles:</span>', unsafe_allow_html=True)
+            for link in wiki_links:
+                try:
+                    title = link.split("/wiki/")[-1].replace("_", " ")
+                except Exception:
+                    title = "Wikipedia Article"
+                st.markdown(
+                    f'<a href="{link}" target="_blank">'
+                    f'<span style="font-family:Arial, sans-serif; font-size:18px; color:#FFFFFF;">{title}</span>'
+                    '</a>',
+                    unsafe_allow_html=True
+                )
 
 
 
@@ -169,20 +183,27 @@ def main():
 
     user_question = st.text_input("Ask a Question from the PDF Files")
 
-    if user_question:
-        user_input(user_question)
-
     with st.sidebar:
         st.title("Menu:")
         pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
-        if st.button("Submit & Process"):
+        if st.button("Submit & Process") and pdf_docs:
             with st.spinner("Processing..."):
                 raw_text = get_pdf_text(pdf_docs)
                 text_chunks = get_text_chunks(raw_text)
                 generate_embeddings_and_save_faiss(text_chunks)
                 st.success("Done")
-  
-    
+
+    if pdf_docs:
+        pdf_names = [pdf.name for pdf in pdf_docs]
+        selected_pdf = st.selectbox("Select a PDF to summarize:", pdf_names)
+        if selected_pdf:
+            if st.button("Summarize"):
+                with st.spinner(f"Summarizing {selected_pdf}..."):
+                    quest = f"summarize this document {selected_pdf}"
+                    user_input(quest)
+
+    if user_question:
+        user_input(user_question)
   
 
 if __name__ == "__main__":
