@@ -11,13 +11,13 @@ Chat-with-pdf is a Streamlit web application that lets you upload one or more PD
 - Simple, interactive web interface (Streamlit)
 
 ## Demo
-![screenshot](demo_screenshot.png) <!-- Add a screenshot if available -->
+![screenshot](image.png) <!-- Add a screenshot if available -->
 
 ## Getting Started
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/Chat-with-pdf.git
+git clone https://github.com/Vidit2716/Chat-with-pdf.git
 cd Chat-with-pdf
 ```
 
