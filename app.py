@@ -188,13 +188,19 @@ def main():
 
     with st.sidebar:
         st.title("Menu:")
-        pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
+        pdf_docs = st.file_uploader(
+            "Upload your PDF Files and Click on the Submit & Process Button",
+            type=["pdf"],  # ⬅️ only allows PDFs
+            accept_multiple_files=True
+        )
+
         if st.button("Submit & Process") and pdf_docs:
             with st.spinner("Processing..."):
                 raw_text = get_pdf_text(pdf_docs)
                 text_chunks = get_text_chunks(raw_text)
                 generate_embeddings_and_save_faiss(text_chunks)
                 st.success("Done")
+
 
     if pdf_docs:
         pdf_names = [pdf.name for pdf in pdf_docs]
