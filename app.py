@@ -123,8 +123,8 @@ def user_input(user_question):
         top_keywords = keywords[:3]
         keyword_links = []
         for kw in top_keywords:
-            yt_links = search_links(kw, "youtube.com")[:2]
-            wiki_links = search_links(kw, "wikipedia.org")[:2]
+    #        yt_links = search_links(kw, "youtube.com")[:2]
+     #       wiki_links = search_links(kw, "wikipedia.org")[:2]
             keyword_links.append((kw, yt_links, wiki_links))
 
         # Display related links for each keyword
@@ -179,40 +179,59 @@ def user_input(user_question):
 
 
 
-
 def main():
     st.set_page_config("Chat PDF")
     st.header("Chat with PDF using Gemini💁")
 
-    user_question = st.text_input("Ask a Question from the PDF Files")
+    # Initialize session state for pdf_processed
+    if "pdf_processed" not in st.session_state:
+        st.session_state.pdf_processed = False
 
     with st.sidebar:
         st.title("Menu:")
         pdf_docs = st.file_uploader(
             "Upload your PDF Files and Click on the Submit & Process Button",
-            type=["pdf"],  # ⬅️ only allows PDFs
+            type=["pdf"],
             accept_multiple_files=True
         )
 
         if st.button("Submit & Process") and pdf_docs:
             with st.spinner("Processing..."):
-                raw_text = get_pdf_text(pdf_docs)
-                text_chunks = get_text_chunks(raw_text)
-                generate_embeddings_and_save_faiss(text_chunks)
-                st.success("Done")
+                try:
+                    raw_text = get_pdf_text(pdf_docs)
+                    if not raw_text.strip():
+                        st.error("❗ Try PDF with text — no readable content found.")
+                    else:
+                        text_chunks = get_text_chunks(raw_text)
+                        generate_embeddings_and_save_faiss(text_chunks)
+                        st.success("✅ Done")
+                        st.session_state.pdf_processed = True
+                except IndexError:
+                    st.error("❗ Try PDF with text — list index out of range.")
+                except Exception as e:
+                    st.error(f"❗ Error: {str(e)}")
 
 
-    if pdf_docs:
-        pdf_names = [pdf.name for pdf in pdf_docs]
-        selected_pdf = st.selectbox("Select a PDF to summarize:", pdf_names)
-        if selected_pdf:
-            if st.button("Summarize"):
-                with st.spinner(f"Summarizing {selected_pdf}..."):
-                    quest = f"summarize this document {selected_pdf}"
-                    user_input(quest)
+    # After successful processing, allow interaction
+    if st.session_state.pdf_processed:
+        user_question = st.text_input("Ask a Question from the PDF Files")
+        if user_question:
+            user_input(user_question)
+        # PDF selection and summarization
+        if pdf_docs:
+            pdf_names = [pdf.name for pdf in pdf_docs]
+            selected_pdf = st.selectbox("Select a PDF to summarize:", pdf_names)
+            if selected_pdf:
+                if st.button("Summarize"):
+                    with st.spinner(f"Summarizing {selected_pdf}..."):
+                        quest = f"summarize this document {selected_pdf}"
+                        user_input(quest)
 
-    if user_question:
-        user_input(user_question)
+        # Allow question input only after processing
+    else:
+        st.title("📄 Please upload and process PDF files before asking questions.")
+
+
   
 
 if __name__ == "__main__":
