@@ -93,7 +93,7 @@ def get_conversational_chain():
     prompt_template = """ 
     Answer the question as detailed as possible from the provided context , make sure to provide all the details, if it asks simple definations of full forms ans them even if 
      it is not in the context  ,if the ans is not in 
-    the provided context just say ,"ans is not available in the context ", don't provide the wrong answer \n\n 
+    the provided context just say ,"Ans is not available in the context ", don't provide the wrong answer \n\n 
     Context :\n{context}?\n
     question:\n{question}\n
     Answer: 
@@ -115,49 +115,51 @@ def user_input(user_question):
     
     st.write("Reply: ", response["output_text"]) 
     
-    keywords = extract_keywords(response["output_text"])
-    print (keywords)
-    # Limit to top 3 keywords
-    top_keywords = keywords[:3]
-    keyword_links = []
-    for kw in top_keywords:
-        yt_links = search_links(kw, "youtube.com")[:2]
-        wiki_links = search_links(kw, "wikipedia.org")[:2]
-        keyword_links.append((kw, yt_links, wiki_links))
+    if response["output_text"] != "Ans is not available in the context":
+        keywords = extract_keywords(response["output_text"])
+        print(keywords)
+        
+        # Limit to top 3 keywords
+        top_keywords = keywords[:3]
+        keyword_links = []
+        for kw in top_keywords:
+            yt_links = search_links(kw, "youtube.com")[:2]
+            wiki_links = search_links(kw, "wikipedia.org")[:2]
+            keyword_links.append((kw, yt_links, wiki_links))
 
-    # Display related links for each keyword
-    for kw, yt_links, wiki_links in keyword_links:
-        st.markdown(f'<span style="font-size:24px; color:#FFFFFF;">Related links for keyword: <b>{kw}</b></span>', unsafe_allow_html=True)
-        
-        # YouTube links
-        if yt_links:
-            st.markdown('<span style="font-size:20px; color:#FFFFFF;">YouTube videos:</span>', unsafe_allow_html=True)
-            cols = st.columns(len(yt_links))
-            for i, link in enumerate(yt_links):
-                if "watch?v=" in link:
-                    video_id = link.split("watch?v=")[-1].split("&")[0]
-                    thumbnail_url = f"https://img.youtube.com/vi/{video_id}/0.jpg"
-                    try:
-                        oembed_url = f"https://www.youtube.com/oembed?url={link}&format=json"
-                        video_info = requests.get(oembed_url).json()
-                        title = video_info.get("title", "YouTube Video")
-                    except Exception:
-                        title = "YouTube Video"
-                    cols[i].image(thumbnail_url, width=200)
-                    cols[i].markdown(
-                        f'<a href="{link}" target="_blank">'
-                        f'<span style="font-family:Arial, sans-serif; font-size:18px; color:#FFFFFF;">{title}</span>'
-                        '</a>',
-                        unsafe_allow_html=True
-                    )
-                else:
-                    cols[i].markdown(
-                        f'<a href="{link}" target="_blank">'
-                        f'<span style="font-family:Arial, sans-serif; font-size:18px; color:#FFFFFF;">YouTube Video</span>'
-                        '</a>',
-                        unsafe_allow_html=True
-                    )
-        
+        # Display related links for each keyword
+        for kw, yt_links, wiki_links in keyword_links:
+            st.markdown(f'<span style="font-size:24px; color:#FFFFFF;">Related links for keyword: <b>{kw}</b></span>', unsafe_allow_html=True)
+            
+            # YouTube links
+            if yt_links:
+                st.markdown('<span style="font-size:20px; color:#FFFFFF;">YouTube videos:</span>', unsafe_allow_html=True)
+                cols = st.columns(len(yt_links))
+                for i, link in enumerate(yt_links):
+                    if "watch?v=" in link:
+                        video_id = link.split("watch?v=")[-1].split("&")[0]
+                        thumbnail_url = f"https://img.youtube.com/vi/{video_id}/0.jpg"
+                        try:
+                            oembed_url = f"https://www.youtube.com/oembed?url={link}&format=json"
+                            video_info = requests.get(oembed_url).json()
+                            title = video_info.get("title", "YouTube Video")
+                        except Exception:
+                            title = "YouTube Video"
+                        cols[i].image(thumbnail_url, width=200)
+                        cols[i].markdown(
+                            f'<a href="{link}" target="_blank">'
+                            f'<span style="font-family:Arial, sans-serif; font-size:18px; color:#FFFFFF;">{title}</span>'
+                            '</a>',
+                            unsafe_allow_html=True
+                        )
+                    else:
+                        cols[i].markdown(
+                            f'<a href="{link}" target="_blank">'
+                            f'<span style="font-family:Arial, sans-serif; font-size:18px; color:#FFFFFF;">YouTube Video</span>'
+                            '</a>',
+                            unsafe_allow_html=True
+                        )
+
         # Wikipedia links
         if wiki_links:
             st.markdown('<span style="font-size:20px; color:#FFFFFF;">Wikipedia articles:</span>', unsafe_allow_html=True)
@@ -172,6 +174,7 @@ def user_input(user_question):
                     '</a>',
                     unsafe_allow_html=True
                 )
+
 
 
 
