@@ -123,8 +123,8 @@ def user_input(user_question):
         top_keywords = keywords[:3]
         keyword_links = []
         for kw in top_keywords:
-    #        yt_links = search_links(kw, "youtube.com")[:2]
-     #       wiki_links = search_links(kw, "wikipedia.org")[:2]
+            yt_links = search_links(kw, "youtube.com")[:2]
+            wiki_links = search_links(kw, "wikipedia.org")[:2]
             keyword_links.append((kw, yt_links, wiki_links))
 
         # Display related links for each keyword
